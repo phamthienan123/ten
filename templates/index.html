@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Siêu thị mini</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .item { border: 1px solid #ccc; padding: 10px; margin: 10px; display: inline-block; width: 200px; }
+    img { max-width: 100%; height: 120px; object-fit: cover; }
+    .btn { background: green; color: white; padding: 5px 10px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>🛒 Siêu thị mini</h1>
+  <h3>Danh sách sản phẩm</h3>
+
+  {% for code, item in items.items() %}
+    <div class="item">
+      <img src="{{ url_for('static', filename='uploads/' + item['image']) }}" alt="ảnh">
+      <h4>{{ item['name'] }}</h4>
+      <p>Mã: {{ code }}</p>
+      <p>Còn lại: {{ item['quantity'] }}</p>
+      <form method="post" action="{{ url_for('buy', code=code) }}">
+        <input type="number" name="qty" value="1" min="1" max="{{ item['quantity'] }}">
+        <button type="submit" class="btn">Mua</button>
+      </form>
+    </div>
+  {% endfor %}
+
+  <h2>🧾 Hóa đơn</h2>
+  {% if cart %}
+    <ul>
+      {% for code, qty in cart.items() %}
+        <li>{{ items[code]['name'] }} × {{ qty }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Chưa có món hàng nào</p>
+  {% endif %}
+</body>
+</html>
