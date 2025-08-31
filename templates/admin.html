@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Trang Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Quản lý Admin</h1>
+
+  <h2>Danh sách User</h2>
+  <ul>
+    {% for username, info in users.items() %}
+      <li>
+        {{ username }} - 💎 {{ info['diamonds'] }}
+        <form method="POST" action="/delete_user/{{ username }}">
+          <button type="submit">Xóa</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <h2>Giao nhiệm vụ</h2>
+  <form method="POST" action="/assign_task">
+    <input type="text" name="username" placeholder="Tên user" required>
+    <input type="text" name="title" placeholder="Tên nhiệm vụ" required>
+    <input type="number" name="reward" placeholder="Phần thưởng (kim cương)" required>
+    <button type="submit">Giao nhiệm vụ</button>
+  </form>
+
+  <h2>Cập nhật giá vật phẩm</h2>
+  {% for item, info in items.items() %}
+    <form method="POST" action="/update_price/{{ item }}">
+      <h3>{{ item }}</h3>
+      <label>Mua:</label>
+      <input type="number" name="buy" value="{{ info['buy'] }}">
+      <label>Bán:</label>
+      <input type="number" name="sell" value="{{ info['sell'] }}">
+      <button type="submit">Cập nhật</button>
+    </form>
+  {% endfor %}
+
+  <h2>Yêu cầu hoàn thành nhiệm vụ</h2>
+  <ul>
+    {% for username, info in users.items() %}
+      {% for i, task in enumerate(info['tasks']) %}
+        {% if task['status'] == "requested" %}
+          <li>
+            {{ username }} yêu cầu hoàn thành: {{ task['title'] }} (💎{{ task['reward'] }})
+            <form method="POST" action="/approve_task/{{ username }}/{{ i }}">
+              <button type="submit">Duyệt</button>
+            </form>
+          </li>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </ul>
+
+  <a href="/logout">Đăng xuất</a>
+</body>
+</html>
