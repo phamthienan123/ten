@@ -1,133 +1,233 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-import json, os, uuid
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import json, os
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "secret")
+app.secret_key = "secret-key"  # thay bằng key mạnh hơn
 
-# ================== ĐƯỜNG DẪN ==================
-ITEMS_FILE = "data/items.json"
-ORDERS_FILE = "data/orders.json"
-UPLOAD_FOLDER = "static/uploads"
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+USERS_FILE = "users.json"
+ITEMS_FILE = "items.json"
 
-os.makedirs("data", exist_ok=True)
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ================== HÀM XỬ LÝ FILE ==================
-def load_json(file):
-    if not os.path.exists(file):
-        return []
-    with open(file, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except:
-            return []
+# ----------------- HÀM TIỆN ÍCH -----------------
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "w") as f:
+            json.dump({}, f)
+    with open(USERS_FILE, "r") as f:
+        return json.load(f)
 
-def save_json(file, data):
-    with open(file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+def save_users(users):
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=4)
 
-# ================== TRANG CHÍNH ==================
+def load_items():
+    if not os.path.exists(ITEMS_FILE):
+        data = {
+            "rank_bronze": {"buy": 50, "sell": 25},
+            "rank_silver": {"buy": 100, "sell": 50},
+            "rank_gold": {"buy": 200, "sell": 100},
+            "rank_platinum": {"buy": 500, "sell": 250}
+        }
+        with open(ITEMS_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+    with open(ITEMS_FILE, "r") as f:
+        return json.load(f)
+
+def save_items(items):
+    with open(ITEMS_FILE, "w") as f:
+        json.dump(items, f, indent=4)
+
+
+# ----------------- ROUTES -----------------
 @app.route("/")
-def index():
-    items = load_json(ITEMS_FILE)
-    return render_template("index.html", items=items)
+def home():
+    if "username" in session:
+        return redirect(url_for("dashboard"))
+    return render_template("index.html")
 
-# ================== GIỎ HÀNG ==================
-@app.route("/checkout", methods=["POST"])
-def checkout():
-    items = load_json(ITEMS_FILE)
-    orders = load_json(ORDERS_FILE)
 
-    cart = []
-    total = 0
+# Đăng ký
+@app.route("/register", methods=["POST"])
+def register():
+    username = request.form["username"]
+    password = request.form["password"]
 
-    for item in items:
-        qty = request.form.get(f"qty_{item['id']}", "0")
-        try:
-            qty = int(qty)
-        except:
-            qty = 0
-        if qty > 0 and qty <= item["quantity"]:
-            subtotal = qty * item["price"]
-            total += subtotal
-            cart.append({
-                "id": item["id"],
-                "name": item["name"],
-                "qty": qty,
-                "price": item["price"],
-                "subtotal": subtotal
-            })
-            item["quantity"] -= qty
+    users = load_users()
+    if username in users:
+        flash("Tài khoản đã tồn tại!")
+        return redirect(url_for("home"))
 
-    if not cart:
-        flash("Bạn chưa chọn món hàng nào!", "error")
-        return redirect(url_for("index"))
-
-    order = {
-        "id": str(uuid.uuid4()),
-        "items": cart,
-        "total": total,
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    users[username] = {
+        "password": password,
+        "diamonds": 0,
+        "inventory": [],
+        "rank": "",
+        "last_login": "",
+        "quests": []
     }
+    save_users(users)
+    flash("Đăng ký thành công, hãy đăng nhập!")
+    return redirect(url_for("home"))
 
-    orders.append(order)
-    save_json(ORDERS_FILE, orders)
-    save_json(ITEMS_FILE, items)
 
-    flash("Thanh toán thành công!", "success")
-    return redirect(url_for("index"))
+# Đăng nhập
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.form["username"]
+    password = request.form["password"]
 
-# ================== ADMIN ==================
-@app.route("/admin", methods=["GET", "POST"])
-def admin():
-    if request.method == "POST":
-        password = request.form.get("password")
-        if password != ADMIN_PASSWORD:
-            flash("Sai mật khẩu!", "error")
-            return redirect(url_for("admin"))
-        items = load_json(ITEMS_FILE)
-        return render_template("admin.html", items=items)
+    users = load_users()
+    if username in users and users[username]["password"] == password:
+        session["username"] = username
+        return redirect(url_for("dashboard"))
+    flash("Sai tài khoản hoặc mật khẩu!")
+    return redirect(url_for("home"))
 
-    return render_template("admin_login.html")
 
-@app.route("/admin/add", methods=["POST"])
-def admin_add():
-    password = request.form.get("password")
-    if password != ADMIN_PASSWORD:
-        flash("Sai mật khẩu!", "error")
-        return redirect(url_for("admin"))
+# Đăng xuất
+@app.route("/logout")
+def logout():
+    session.pop("username", None)
+    return redirect(url_for("home"))
 
-    items = load_json(ITEMS_FILE)
 
-    name = request.form.get("name")
-    price = float(request.form.get("price", 0))
-    quantity = int(request.form.get("quantity", 0))
+# Dashboard
+@app.route("/dashboard")
+def dashboard():
+    if "username" not in session:
+        return redirect(url_for("home"))
 
-    image = request.files.get("image")
-    if image and image.filename != "":
-        filename = str(uuid.uuid4()) + os.path.splitext(image.filename)[1]
-        path = os.path.join(UPLOAD_FOLDER, filename)
-        image.save(path)
-        image_url = f"uploads/{filename}"
+    users = load_users()
+    username = session["username"]
+    user = users[username]
+
+    # thưởng đăng nhập mỗi ngày
+    today = datetime.now().strftime("%Y-%m-%d")
+    if user["last_login"] != today:
+        user["diamonds"] += 5
+        user["last_login"] = today
+        save_users(users)
+        flash("Bạn nhận được 5 💎 thưởng đăng nhập hôm nay!")
+
+    # lấy rank cao nhất
+    ranks_order = ["rank_bronze", "rank_silver", "rank_gold", "rank_platinum"]
+    user_rank = ""
+    for r in reversed(ranks_order):
+        if r in user["inventory"]:
+            user_rank = r
+            break
+
+    return render_template("dashboard.html", user=user, rank=user_rank)
+
+
+# Shop
+@app.route("/shop")
+def shop():
+    if "username" not in session:
+        return redirect(url_for("home"))
+
+    items = load_items()
+    return render_template("shop.html", items=items)
+
+
+@app.route("/buy/<item>")
+def buy(item):
+    if "username" not in session:
+        return redirect(url_for("home"))
+
+    users = load_users()
+    items = load_items()
+    username = session["username"]
+    user = users[username]
+
+    if item in items and user["diamonds"] >= items[item]["buy"]:
+        user["diamonds"] -= items[item]["buy"]
+        user["inventory"].append(item)
+        save_users(users)
+        flash(f"Mua {item} thành công!")
     else:
-        image_url = "placeholder.png"
+        flash("Không đủ kim cương!")
 
-    new_item = {
-        "id": str(uuid.uuid4()),
-        "name": name,
-        "price": price,
-        "quantity": quantity,
-        "image": image_url
-    }
+    return redirect(url_for("shop"))
 
-    items.append(new_item)
-    save_json(ITEMS_FILE, items)
 
-    flash("Đã thêm sản phẩm!", "success")
+@app.route("/sell/<item>")
+def sell(item):
+    if "username" not in session:
+        return redirect(url_for("home"))
+
+    users = load_users()
+    items = load_items()
+    username = session["username"]
+    user = users[username]
+
+    if item in user["inventory"]:
+        user["inventory"].remove(item)
+        user["diamonds"] += items[item]["sell"]
+        save_users(users)
+        flash(f"Bán {item} thành công!")
+    else:
+        flash("Bạn không sở hữu vật phẩm này!")
+
+    return redirect(url_for("shop"))
+
+
+# Admin
+@app.route("/admin")
+def admin():
+    if "username" not in session or session["username"] != "admin":
+        flash("Chỉ admin mới vào được!")
+        return redirect(url_for("home"))
+
+    users = load_users()
+    items = load_items()
+    return render_template("admin.html", users=users, items=items)
+
+
+@app.route("/admin/delete/<username>")
+def delete_user(username):
+    if "username" not in session or session["username"] != "admin":
+        return redirect(url_for("home"))
+
+    users = load_users()
+    if username in users:
+        users.pop(username)
+        save_users(users)
+        flash(f"Đã xóa tài khoản {username}")
     return redirect(url_for("admin"))
 
-# ================== CHẠY APP ==================
+
+@app.route("/admin/give/<username>/<int:amount>")
+def give_diamonds(username, amount):
+    if "username" not in session or session["username"] != "admin":
+        return redirect(url_for("home"))
+
+    users = load_users()
+    if username in users:
+        users[username]["diamonds"] += amount
+        save_users(users)
+        flash(f"Đã tặng {amount} 💎 cho {username}")
+    return redirect(url_for("admin"))
+
+
+@app.route("/admin/update_price/<item>", methods=["POST"])
+def update_price(item):
+    if "username" not in session or session["username"] != "admin":
+        return redirect(url_for("home"))
+
+    items = load_items()
+    if item in items:
+        buy_price = int(request.form["buy"])
+        sell_price = int(request.form["sell"])
+        items[item]["buy"] = buy_price
+        items[item]["sell"] = sell_price
+        save_items(items)
+        flash(f"Cập nhật giá {item} thành công!")
+    return redirect(url_for("admin"))
+
+
+# ----------------- RUN -----------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=81, debug=True)
+    app.run(host="0.0.0.0", port=10000, debug=True)
+
