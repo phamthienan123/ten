@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Xin chào, {{ user['username'] }}!</h1>
+  <p>💎 Kim cương: {{ user['diamonds'] }}</p>
+  <p>Rank cao nhất: {{ highest_rank }}</p>
+
+  <h2>Nhiệm vụ</h2>
+  <ul>
+    {% for task in user['tasks'] %}
+      <li>
+        {{ task['title'] }} - Thưởng: 💎{{ task['reward'] }}
+        {% if task['status'] == "pending" %}
+          (Đang chờ duyệt)
+        {% elif task['status'] == "approved" %}
+          (Đã nhận thưởng)
+        {% else %}
+          <form method="POST" action="/request_task/{{ loop.index0 }}">
+            <button type="submit">Hoàn thành</button>
+          </form>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <a href="/shop">🛒 Vào cửa hàng</a> |
+  <a href="/logout">Đăng xuất</a>
+</body>
+</html>
