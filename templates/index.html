@@ -1,41 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Siêu thị mini</title>
-  <style>
-    body { font-family: Arial; margin: 20px; }
-    .item { border: 1px solid #ccc; padding: 10px; margin: 10px; display: inline-block; width: 200px; }
-    img { max-width: 100%; height: 120px; object-fit: cover; }
-    .btn { background: green; color: white; padding: 5px 10px; text-decoration: none; }
-  </style>
+  <title>Đăng nhập</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h1>🛒 Siêu thị mini</h1>
-  <h3>Danh sách sản phẩm</h3>
+  <h1>Đăng nhập</h1>
+  <form method="POST" action="/login">
+    <input type="text" name="username" placeholder="Tên đăng nhập" required>
+    <input type="password" name="password" placeholder="Mật khẩu" required>
+    <button type="submit">Đăng nhập</button>
+  </form>
 
-  {% for code, item in items.items() %}
-    <div class="item">
-      <img src="{{ url_for('static', filename='uploads/' + item['image']) }}" alt="ảnh">
-      <h4>{{ item['name'] }}</h4>
-      <p>Mã: {{ code }}</p>
-      <p>Còn lại: {{ item['quantity'] }}</p>
-      <form method="post" action="{{ url_for('buy', code=code) }}">
-        <input type="number" name="qty" value="1" min="1" max="{{ item['quantity'] }}">
-        <button type="submit" class="btn">Mua</button>
-      </form>
-    </div>
-  {% endfor %}
-
-  <h2>🧾 Hóa đơn</h2>
-  {% if cart %}
-    <ul>
-      {% for code, qty in cart.items() %}
-        <li>{{ items[code]['name'] }} × {{ qty }}</li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>Chưa có món hàng nào</p>
-  {% endif %}
+  <h2>Đăng ký</h2>
+  <form method="POST" action="/register">
+    <input type="text" name="username" placeholder="Tên đăng nhập" required>
+    <input type="password" name="password" placeholder="Mật khẩu" required>
+    <button type="submit">Đăng ký</button>
+  </form>
 </body>
 </html>
