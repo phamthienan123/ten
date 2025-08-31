@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Thêm hàng mới</title>
+</head>
+<body>
+  <h1>➕ Thêm hàng mới</h1>
+  <form method="post" enctype="multipart/form-data">
+    <p>Tên: <input type="text" name="name" required></p>
+    <p>Mã: <input type="text" name="code" required></p>
+    <p>Số lượng: <input type="number" name="quantity" required></p>
+    <p>Tình trạng: 
+      <select name="status">
+        <option value="còn hàng">Còn hàng</option>
+        <option value="hết hàng">Hết hàng</option>
+      </select>
+    </p>
+    <p>Ảnh: <input type="file" name="image" required></p>
+    <button type="submit">Lưu</button>
+  </form>
+  <p><a href="{{ url_for('index') }}">⬅ Trở lại</a></p>
+</body>
+</html>
